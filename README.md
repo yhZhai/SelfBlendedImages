@@ -5,6 +5,10 @@ The official PyTorch implementation for the following paper:
 > Kaede Shiohara and Toshihiko Yamasaki,  
 > *CVPR 2022 Oral*
 
+# Usage
+```shell
+git clone --recurse-submodules git@github.com:yhZhai/SelfBlendedImages.git
+```
 
 # License
 Our code and pretrained model are freely available for research purpose.  

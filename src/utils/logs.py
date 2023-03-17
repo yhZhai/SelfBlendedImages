@@ -4,11 +4,11 @@ import logging
 # a function  to create and save logs in the log files
 def log(path, file):
     """[Create a log file to record the experiment's logs]
-    
+
     Arguments:
         path {string} -- path to the directory
         file {string} -- file name
-    
+
     Returns:
         [obj] -- [logger that record logs]
     """
@@ -26,13 +26,13 @@ def log(path, file):
     # configure logger
     logging.basicConfig(level=logging.INFO, format=console_logging_format)
     logger = logging.getLogger()
-    
+
     # create a file handler for output file
     handler = logging.FileHandler(log_file)
 
     # set the logging level for log file
     handler.setLevel(logging.INFO)
-    
+
     # create a logging format
     formatter = logging.Formatter(file_logging_format)
     handler.setFormatter(formatter)
