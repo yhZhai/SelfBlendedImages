@@ -1,13 +1,14 @@
-from glob import glob
-import os
-import pandas as pd
-import cv2
-from tqdm import tqdm
-import numpy as np
+import argparse
 import shutil
 import json
 import sys
-import argparse
+from glob import glob
+import os
+
+import numpy as np
+import pandas as pd
+import cv2
+from tqdm import tqdm
 from imutils import face_utils
 from retinaface.pre_trained_models import get_model
 from retinaface.utils import vis_annotations
