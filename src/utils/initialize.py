@@ -10,6 +10,19 @@ import pandas as pd
 
 
 def init_ff(phase, level="frame", n_frames=8):
+    """
+    Initializes the FaceForensics++ dataset by creating a list of image paths and their corresponding labels.
+
+    Args:
+        phase (str): The dataset phase, either "train", "val", or "test".
+        level (str, optional): The granularity of the dataset, either "frame" or "video". Defaults to "frame".
+        n_frames (int, optional): The number of equally spaced frames to select from each video. Defaults to 8.
+
+    Returns:
+        image_list (list): A list of image file paths.
+        label_list (list): A list of labels corresponding to the images in image_list.
+    """
+
     dataset_path = "data/FaceForensics++/original_sequences/youtube/raw/frames/"
 
     image_list = []

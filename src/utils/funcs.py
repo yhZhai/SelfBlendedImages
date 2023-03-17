@@ -46,6 +46,29 @@ def crop_face(
     only_img=False,
     phase="train",
 ):
+    """
+    This function crops a face from an input image, using either facial landmarks or a bounding box.
+    
+    Args:
+        img (numpy.array): Input image.
+        landmark (numpy.array, optional): Facial landmark coordinates.
+        bbox (numpy.array, optional): Bounding box coordinates.
+        margin (bool, optional): Whether to add a margin around the cropped face.
+        crop_by_bbox (bool, optional): Whether to crop using the bounding box or landmarks.
+        abs_coord (bool, optional): Whether to return absolute coordinates of the cropped region.
+        only_img (bool, optional): Whether to return only the cropped image.
+        phase (str, optional): One of the following: "train", "val", "test". Determines the degree of randomness in cropping.
+
+    Returns:
+        img_cropped (numpy.array): Cropped face image.
+        landmark_cropped (numpy.array, optional): Adjusted landmark coordinates.
+        bbox_cropped (numpy.array, optional): Adjusted bounding box coordinates.
+        (y0_new, y1_new, x0_new, x1_new) (tuple, optional): Absolute coordinates of the cropped region (if abs_coord=True).
+
+    Raises:
+        AssertionError: If neither landmark nor bbox is provided or if phase is not one of the allowed values.
+    """
+
     assert phase in ["train", "val", "test"]
 
     # crop face------------------------------------------

@@ -34,6 +34,22 @@ else:
 
 class SBI_Dataset(Dataset):
     def __init__(self, phase="train", image_size=224, n_frames=8):
+        """
+        Initializes the SBI_Dataset object with the specified phase, image size, and number of frames.
+
+        Args:
+            phase (str): The phase of the dataset, one of "train", "val", or "test". Defaults to "train".
+            image_size (int): The desired size of the images in the dataset. Defaults to 224.
+            n_frames (int): The number of frames to be used in the dataset. Defaults to 8.
+
+        The function performs the following steps:
+        1. Checks if the input phase is valid.
+        2. Calls the init_ff function to obtain image_list and label_list.
+        3. Filters image_list and label_list to keep only the images that have corresponding landmark and retina files.
+        4. Sets the dataset's attributes, such as image_list, image_size, phase, and n_frames.
+        5. Initializes the dataset's transformations using the get_transforms() and get_source_transforms() methods,
+           which define various augmentations to be applied on images.
+        """
 
         assert phase in ["train", "val", "test"]
 
@@ -76,6 +92,32 @@ class SBI_Dataset(Dataset):
         return len(self.image_list)
 
     def __getitem__(self, idx):
+        """
+        Retrieves an image pair (img_f, img_r) from the dataset given the index.
+
+        Args:
+            idx (int): The index of the desired image pair in the dataset.
+
+        Returns:
+            tuple: A tuple containing the following elements:
+                img_f (numpy.ndarray): The face image after applying the self-blending technique.
+                img_r (numpy.ndarray): The reference face image.
+
+        This function performs the following steps:
+        1. Opens the image file and loads the corresponding landmarks and retina bounding boxes.
+        2. Finds the retina bounding box with the highest IoU with the landmark bounding box.
+        3. Reorders the landmarks and applies horizontal flip if in the training phase with a 50% chance.
+        4. Crops the face region from the image using the landmark and retina bounding box information.
+        5. Applies the self-blending technique to create img_f.
+        6. If in the training phase, applies the dataset's transformations to img_f and img_r.
+        7. Crops img_f and img_r using the retina bounding box.
+        8. Resizes and normalizes img_f and img_r to the desired image size and range [0, 1].
+
+        Note:
+            If an exception occurs during image processing, the function will randomly select a new index and retry
+            the processing steps until it succeeds.
+        """
+
         flag = True
         while flag:
             try:
@@ -84,7 +126,7 @@ class SBI_Dataset(Dataset):
                 landmark = np.load(
                     filename.replace(".png", ".npy").replace("/frames/", self.path_lm)
                 )[0]
-                bbox_lm = np.array(
+                bbox_lm = np.array(  # bbox of landmark
                     [
                         landmark[:, 0].min(),
                         landmark[:, 1].min(),
