@@ -15,14 +15,14 @@ from retinaface.utils import vis_annotations
 import torch
 
 
-def facecrop(model, org_path, save_path, period=1, num_frames=10):
+def facecrop(model, org_path, save_path, period=5, num_frames=10):
     cap_org = cv2.VideoCapture(org_path)
     croppedfaces = []
     frame_count_org = int(cap_org.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    frame_idxs = np.linspace(
-        0, frame_count_org - 1, num_frames, endpoint=True, dtype=np.int
-    )
+    # frame_idxs = np.linspace(
+    #     0, frame_count_org - 1, num_frames, endpoint=True, dtype=np.int
+    # )
 
     for cnt_frame in range(frame_count_org):
         ret_org, frame_org = cap_org.read()
@@ -35,8 +35,10 @@ def facecrop(model, org_path, save_path, period=1, num_frames=10):
             )
             continue
 
-        if cnt_frame not in frame_idxs:
+        if cnt_frame % period != 0:
             continue
+        # if cnt_frame not in frame_idxs:
+        #     continue
 
         frame = cv2.cvtColor(frame_org, cv2.COLOR_BGR2RGB)
         faces = model.predict_jsons(frame)

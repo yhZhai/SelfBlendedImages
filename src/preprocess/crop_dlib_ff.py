@@ -14,7 +14,7 @@ from imutils import face_utils
 
 
 def facecrop(
-    org_path, save_path, face_detector, face_predictor, period=1, num_frames=10
+    org_path, save_path, face_detector, face_predictor, period=5, num_frames=10
 ):
 
     cap_org = cv2.VideoCapture(org_path)
@@ -22,9 +22,9 @@ def facecrop(
     croppedfaces = []
     frame_count_org = int(cap_org.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    frame_idxs = np.linspace(
-        0, frame_count_org - 1, num_frames, endpoint=True, dtype=np.int
-    )
+    # frame_idxs = np.linspace(
+    #     0, frame_count_org - 1, num_frames, endpoint=True, dtype=np.int
+    # )
     for cnt_frame in range(frame_count_org):
         ret_org, frame_org = cap_org.read()
         height, width = frame_org.shape[:-1]
@@ -36,7 +36,9 @@ def facecrop(
             )
             break
 
-        if cnt_frame not in frame_idxs:
+        # if cnt_frame not in frame_idxs:
+        #     continue
+        if cnt_frame % period != 0:
             continue
 
         frame = cv2.cvtColor(frame_org, cv2.COLOR_BGR2RGB)
