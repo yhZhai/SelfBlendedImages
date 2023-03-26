@@ -9,7 +9,12 @@ import os
 import pandas as pd
 
 
-def init_ff(phase, level="frame", n_frames=8):
+def init_ff(
+    phase,
+    level="frame",
+    n_frames=8,
+    dataset_path="data/FaceForensics++/original_sequences/youtube/c23/frames/",
+):
     """
     Initializes the FaceForensics++ dataset by creating a list of image paths and their corresponding labels.
 
@@ -22,8 +27,6 @@ def init_ff(phase, level="frame", n_frames=8):
         image_list (list): A list of image file paths.
         label_list (list): A list of labels corresponding to the images in image_list.
     """
-
-    dataset_path = "data/FaceForensics++/original_sequences/youtube/raw/frames/"
 
     image_list = []
     label_list = []

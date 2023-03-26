@@ -45,6 +45,7 @@ def crop_face(
     abs_coord=False,
     only_img=False,
     phase="train",
+    train_rand=None
 ):
     """
     This function crops a face from an input image, using either facial landmarks or a bounding box.
@@ -103,10 +104,16 @@ def crop_face(
         h0_margin *= 2
         h1_margin *= 2
     elif phase == "train":
-        w0_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
-        w1_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
-        h0_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
-        h1_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
+        if train_rand:
+            w0_margin *= train_rand * 0.6 + 0.2
+            w1_margin *= train_rand * 0.6 + 0.2
+            h0_margin *= train_rand * 0.6 + 0.2
+            h1_margin *= train_rand * 0.6 + 0.2
+        else:
+            w0_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
+            w1_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
+            h0_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
+            h1_margin *= np.random.rand() * 0.6 + 0.2  # np.random.rand()
     else:
         w0_margin *= 0.5
         w1_margin *= 0.5
