@@ -215,8 +215,6 @@ class FFPPVideoDataset(Dataset):
                     landmark = landmark.astype(float)
                     landmark[:, 0] *= width_scale
                     landmark[:, 1] *= height_scale
-                    patches = self.extract_patches(image, landmark, self.patch_size)
-                    patches = torch.from_numpy(patches).permute(0, 3, 1, 2)
 
                     if replay:
                         transform = A.ReplayCompose.replay(replay, image=image)
@@ -233,6 +231,10 @@ class FFPPVideoDataset(Dataset):
                             "std": IMAGENET_DEFAULT_STD,
                         },
                     )
+                    
+                    image_np = image.permute(1, 2, 0).numpy()
+                    patches = self.extract_patches(image_np, landmark, self.patch_size)
+                    patches = torch.from_numpy(patches).permute(0, 3, 1, 2)
 
                     image_list.append(image)
                     landmark_list.append(landmark)
@@ -346,7 +348,6 @@ class FFPPVideoDataset(Dataset):
         return patches
 
 
-
 def visualize_cropped_faces_and_landmarks(frames, landmarks):
     import matplotlib.pyplot as plt
 
@@ -388,13 +389,15 @@ def visualize_patches(image, landmarks, patches, patch_size=32):
     half_patch_size = patch_size // 2
     for lm in landmarks:
         rect = Rectangle((lm[0] - half_patch_size, lm[1] - half_patch_size),
-                         patch_size, patch_size, linewidth=1, edgecolor='r', facecolor=(1, 0, 0, 0.5))
+                         patch_size, patch_size, linewidth=1, edgecolor='r', facecolor=(1, 0, 0, 0.1))
         ax.add_patch(rect)
 
     # Show the patches
     for i, patch in enumerate(patches):
         ax = plt.subplot(num_rows, num_columns, i + 2)
         patch = np.transpose(patch, (1, 2, 0))  # Transpose the patch to (height, width, channels)
+        patch = (patch * np.array(IMAGENET_DEFAULT_STD) + np.array(IMAGENET_DEFAULT_MEAN)) * 255
+        patch = patch.astype(np.uint8)
         plt.imshow(patch)
         plt.title(f"Landmark {i + 1}")
         plt.axis("off")
@@ -406,7 +409,7 @@ def visualize_patches(image, landmarks, patches, patch_size=32):
 
 
 if __name__ == "__main__":
-    patch_size = 48
+    patch_size = 42
     dataset = FFPPVideoDataset(phase="train", patch_size=patch_size)
     for item in dataset:
         frames = item["frames"]
