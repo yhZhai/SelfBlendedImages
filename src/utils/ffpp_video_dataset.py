@@ -4,7 +4,7 @@ from glob import glob
 import json
 import random
 
-from termcolor import cprint
+from rich import print
 import numpy as np
 import cv2
 from PIL import Image
@@ -30,6 +30,7 @@ class FFPPVideoDataset(Dataset):
         compression: str = "c23",
         dataset_root: str = "data/FaceForensics++/",
         landmark_path: str = "/landmarks/",
+        patch_size: int = 32,
     ):
 
         assert phase in ["train", "val", "test"]
@@ -50,6 +51,7 @@ class FFPPVideoDataset(Dataset):
         self.compression = compression
         self.dataset_root = Path(dataset_root)
         self.landmark_path = landmark_path
+        self.patch_size = patch_size
 
         self.image_dict, self.label_dict = self._get_datalist()
         self.transform = self.get_transforms()
@@ -153,6 +155,7 @@ class FFPPVideoDataset(Dataset):
                 # load
                 image_list = []
                 landmark_list = []
+                patch_list = []
                 do_flip = random.random() < 0.5
                 train_rand = np.random.rand()
                 replay = None
@@ -212,6 +215,8 @@ class FFPPVideoDataset(Dataset):
                     landmark = landmark.astype(float)
                     landmark[:, 0] *= width_scale
                     landmark[:, 1] *= height_scale
+                    patches = self.extract_patches(image, landmark, self.patch_size)
+                    patches = torch.from_numpy(patches).permute(0, 3, 1, 2)
 
                     if replay:
                         transform = A.ReplayCompose.replay(replay, image=image)
@@ -231,17 +236,20 @@ class FFPPVideoDataset(Dataset):
 
                     image_list.append(image)
                     landmark_list.append(landmark)
+                    patch_list.append(patches)
                     flag = False
 
             except Exception as e:
-                cprint(f"[yellow]failed to load {video_name} due to {str(e)}[/yellow]")
+                print(f"[yellow]failed to load {video_name} due to {str(e)}[/yellow]")
                 index = random.randint(0, len(self))
 
         image_list = torch.stack(image_list, axis=0)
         landmark_list = np.stack(landmark_list, axis=0)
+        patch_list = torch.stack(patch_list, axis=0)
         return {
             "frames": image_list,
             "landmarks": landmark_list,
+            "patches": patch_list,
             "label": self.label_dict[video_name],
         }
 
@@ -317,6 +325,27 @@ class FFPPVideoDataset(Dataset):
         img = img[:, ::-1].copy()
         return img, mask, landmark_new, bbox_new
 
+    def extract_patches(self, image, landmarks, patch_size=32):
+        patches = []
+        half_patch_size = patch_size // 2
+        h, w = image.shape[:2]
+
+        for landmark in landmarks:
+            x, y = int(landmark[0]), int(landmark[1])
+            x_min = max(0, x - half_patch_size)
+            y_min = max(0, y - half_patch_size)
+            x_max = min(w, x + half_patch_size)
+            y_max = min(h, y + half_patch_size)
+
+            patch = image[y_min:y_max, x_min:x_max]
+            patch = cv2.resize(patch, (patch_size, patch_size),
+                               interpolation=cv2.INTER_LINEAR)
+            patches.append(patch)
+
+        patches = np.stack(patches, axis=0)
+        return patches
+
+
 
 def visualize_cropped_faces_and_landmarks(frames, landmarks):
     import matplotlib.pyplot as plt
@@ -331,12 +360,58 @@ def visualize_cropped_faces_and_landmarks(frames, landmarks):
         axes[i].scatter(landmark[:, 0], landmark[:, 1], c='r', s=5)
         axes[i].axis('off')
     plt.savefig("test.png")
+    plt.close()
+
+
+def visualize_patches(image, landmarks, patches, patch_size=32):
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+
+    image = np.transpose(image, (1, 2, 0))
+    image = (image * np.array(IMAGENET_DEFAULT_STD) + np.array(IMAGENET_DEFAULT_MEAN)) * 255
+    image = image.astype(np.uint8)
+
+    num_landmarks = landmarks.shape[0]
+    num_columns = 5
+    num_rows = (num_landmarks + num_columns - 1) // num_columns
+
+    fig, axes = plt.subplots(num_rows, num_columns, figsize=(15, 3 * num_rows))
+
+    # Show the original image with landmarks
+    ax = plt.subplot(num_rows, num_columns, 1)
+    plt.imshow(image)
+    plt.scatter(landmarks[:, 0], landmarks[:, 1], c="red", s=5)
+    plt.title("Original Image with Landmarks")
+    plt.axis("off")
+
+    # Draw rectangles around the patches on the original image
+    half_patch_size = patch_size // 2
+    for lm in landmarks:
+        rect = Rectangle((lm[0] - half_patch_size, lm[1] - half_patch_size),
+                         patch_size, patch_size, linewidth=1, edgecolor='r', facecolor=(1, 0, 0, 0.5))
+        ax.add_patch(rect)
+
+    # Show the patches
+    for i, patch in enumerate(patches):
+        ax = plt.subplot(num_rows, num_columns, i + 2)
+        patch = np.transpose(patch, (1, 2, 0))  # Transpose the patch to (height, width, channels)
+        plt.imshow(patch)
+        plt.title(f"Landmark {i + 1}")
+        plt.axis("off")
+
+    plt.tight_layout()
+    plt.savefig("patches.png")
+    plt.close()
+
 
 
 if __name__ == "__main__":
-    dataset = FFPPVideoDataset(phase="train")
+    patch_size = 48
+    dataset = FFPPVideoDataset(phase="train", patch_size=patch_size)
     for item in dataset:
         frames = item["frames"]
         landmarks = item["landmarks"]
+        patches = item["patches"]
         visualize_cropped_faces_and_landmarks(frames, landmarks)
+        visualize_patches(frames[0].numpy(), landmarks[0], patches[0].numpy(), patch_size=patch_size)
         break  # Remove this line if you want to visualize all videos in the dataset
