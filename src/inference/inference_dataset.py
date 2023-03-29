@@ -21,6 +21,8 @@ from preprocess import extract_frames
 from datasets import *
 from sklearn.metrics import confusion_matrix, roc_auc_score
 import warnings
+from albumentations.pytorch.functional import img_to_tensor
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 warnings.filterwarnings("ignore")
 
@@ -58,6 +60,10 @@ def main(args):
 
             with torch.no_grad():
                 img = torch.tensor(face_list).to(device).float() / 255
+                mean = torch.tensor(IMAGENET_DEFAULT_MEAN).to(device).view(1, 3, 1, 1)
+                std = torch.tensor(IMAGENET_DEFAULT_STD).to(device).view(1, 3, 1, 1)
+                img = (img - mean) / std
+
                 pred = model(img).softmax(1)[:, 1]
 
             pred_list = []
