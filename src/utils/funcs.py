@@ -36,6 +36,98 @@ def IoUfrom2bboxes(boxA, boxB):
     return iou
 
 
+def custom_crop_face(
+    img,
+    landmark=None,
+    bbox=None,
+    abs_coord=False,
+    only_img=False,
+    phase="train",
+    train_rand=None
+):
+    """
+    Customizations:
+    - crop_by_bbox always set to True.
+    - margin always set to False.
+    - abs_coord always set to False.
+
+
+    This function crops a face from an input image, using either facial landmarks or a bounding box.
+    
+    Args:
+        img (numpy.array): Input image.
+        landmark (numpy.array, optional): Facial landmark coordinates.
+        bbox (numpy.array, optional): Bounding box coordinates.
+        margin (bool, optional): Whether to add a margin around the cropped face.
+        abs_coord (bool, optional): Whether to return absolute coordinates of the cropped region.
+        only_img (bool, optional): Whether to return only the cropped image.
+        phase (str, optional): One of the following: "train", "val", "test". Determines the degree of randomness in cropping.
+
+    Returns:
+        img_cropped (numpy.array): Cropped face image.
+        landmark_cropped (numpy.array, optional): Adjusted landmark coordinates.
+        bbox_cropped (numpy.array, optional): Adjusted bounding box coordinates.
+        (y0_new, y1_new, x0_new, x1_new) (tuple, optional): Absolute coordinates of the cropped region (if abs_coord=True).
+
+    Raises:
+        AssertionError: If neither landmark nor bbox is provided or if phase is not one of the allowed values.
+    """
+
+    assert phase in ["train", "val", "test"]
+    assert landmark is not None or bbox is not None
+
+    H, W = len(img), len(img[0])
+
+    x0, y0 = bbox[0]
+    x1, y1 = bbox[1]
+    w = x1 - x0
+    h = y1 - y0
+    w0_margin = w / 4
+    w1_margin = w / 4
+    h0_margin = h / 4
+    h1_margin = h / 4
+
+    if phase == "train":
+        if train_rand:
+            w0_margin *= (train_rand + 0.5)
+            w1_margin *= (train_rand + 0.5)
+            h0_margin *= (train_rand + 0.5)
+            h1_margin *= (train_rand + 0.5)
+        else:
+            w0_margin *= (np.random.rand() + 0.5)
+            w1_margin *= (np.random.rand() + 0.5)
+            h0_margin *= (np.random.rand() + 0.5)
+            h1_margin *= (np.random.rand() + 0.5)
+
+    y0_new = max(0, int(y0 - h0_margin))
+    y1_new = min(H, int(y1 + h1_margin))
+    x0_new = max(0, int(x0 - w0_margin))
+    x1_new = min(W, int(x1 + w1_margin))
+
+    img_cropped = img[y0_new:y1_new, x0_new:x1_new]
+    if landmark is not None:
+        landmark_cropped = np.zeros_like(landmark)
+        for i, (p, q) in enumerate(landmark):
+            landmark_cropped[i] = [p - x0_new, q - y0_new]
+    else:
+        landmark_cropped = None
+    if bbox is not None:
+        bbox_cropped = np.zeros_like(bbox)
+        for i, (p, q) in enumerate(bbox):
+            bbox_cropped[i] = [p - x0_new, q - y0_new]
+    else:
+        bbox_cropped = None
+
+    if only_img:
+        return img_cropped
+    return (
+        img_cropped,
+        landmark_cropped,
+        bbox_cropped,
+        (y0 - y0_new, x0 - x0_new, y1_new - y1, x1_new - x1),
+    )
+
+
 def crop_face(
     img,
     landmark=None,

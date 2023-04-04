@@ -1,36 +1,40 @@
+import sys
+import warnings
+from datetime import datetime
+import argparse
+import random
+import shutil
 import os
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms, models, utils
-import numpy as np
 import matplotlib.pyplot as plt
-import os
 import pandas as pd
 from PIL import Image
-import sys
-import random
-import shutil
-from model import Detector
-import argparse
-from datetime import datetime
 from tqdm import tqdm
+from sklearn.metrics import confusion_matrix, roc_auc_score
+from albumentations.pytorch.functional import img_to_tensor
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+
+current_path = os.path.abspath(os.path.dirname(__file__))
+parent_dir = os.path.dirname(current_path)
+sys.path.append(parent_dir)
+sys.path.append("/home/csgrad/yzhai6/Projects/SelfBlendedImages/retinaface")
+
 from retinaface.pre_trained_models import get_model
 from preprocess import extract_frames
 from datasets import *
-from sklearn.metrics import confusion_matrix, roc_auc_score
-import warnings
-from albumentations.pytorch.functional import img_to_tensor
-from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from networks.xception import TransferModel
 
 warnings.filterwarnings("ignore")
 
 
 def main(args):
 
-    model = Detector()
-    model = model.to(device)
     cnn_sd = torch.load(args.weight_name)["model"]
     model.load_state_dict(cnn_sd)
     model.eval()
@@ -88,7 +92,7 @@ def main(args):
 
 if __name__ == "__main__":
 
-    seed = 1
+    seed = 42
     random.seed(seed)
     torch.manual_seed(seed)
     np.random.seed(seed)

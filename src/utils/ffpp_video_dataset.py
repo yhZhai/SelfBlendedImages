@@ -15,9 +15,9 @@ from albumentations.pytorch.functional import img_to_tensor
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 try:
-    from funcs import IoUfrom2bboxes, crop_face
+    from funcs import IoUfrom2bboxes, crop_face, custom_crop_face
 except:
-    from utils.funcs import IoUfrom2bboxes, crop_face
+    from utils.funcs import IoUfrom2bboxes, crop_face, custom_crop_face
 
 
 class FFPPVideoDataset(Dataset):
@@ -195,14 +195,10 @@ class FFPPVideoDataset(Dataset):
                         image,
                         landmark,
                         bbox,
-                        margin=False,
-                        crop_by_bbox=True,
-                        abs_coord=False,
                         phase=self.phase,
                         train_rand=train_rand,
                     )
                     original_height, original_width = image.shape[:2]
-                    print(image.shape, frame_path, video_name)
                     image = cv2.resize(
                         image,
                         (self.image_size, self.image_size),
