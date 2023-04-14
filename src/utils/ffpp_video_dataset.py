@@ -191,12 +191,13 @@ class FFPPVideoDataset(Dataset):
                         image, _, landmark, bbox = self.hflip(
                             image, None, landmark, bbox
                         )
-                    image, landmark, bbox, _ = crop_face(
+                    image, landmark, bbox, _ = custom_crop_face(
                         image,
                         landmark,
                         bbox,
                         phase=self.phase,
                         train_rand=train_rand,
+                        margin_factor=1/4,
                     )
                     original_height, original_width = image.shape[:2]
                     image = cv2.resize(
@@ -237,7 +238,7 @@ class FFPPVideoDataset(Dataset):
                     image_list.append(image)
                     landmark_list.append(landmark)
                     patch_list.append(patches)
-                    flag = False
+                flag = False
 
             except Exception as e:
                 print(
@@ -349,7 +350,7 @@ class FFPPVideoDataset(Dataset):
         return patches
 
 
-def visualize_cropped_faces_and_landmarks(frames, landmarks):
+def visualize_cropped_faces_and_landmarks(frames, landmarks, out="face.png"):
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(1, len(frames), figsize=(20, 5))
@@ -363,11 +364,11 @@ def visualize_cropped_faces_and_landmarks(frames, landmarks):
         axes[i].imshow(cropped_face)
         axes[i].scatter(landmark[:, 0], landmark[:, 1], c="r", s=5)
         axes[i].axis("off")
-    plt.savefig("test.png")
+    plt.savefig(out)
     plt.close()
 
 
-def visualize_patches(image, landmarks, patches, patch_size=32):
+def visualize_patches(image, landmarks, patches, patch_size=32, out="patches.png"):
     import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle
 
@@ -418,12 +419,12 @@ def visualize_patches(image, landmarks, patches, patch_size=32):
         plt.axis("off")
 
     plt.tight_layout()
-    plt.savefig("patches.png")
+    plt.savefig(out)
     plt.close()
 
 
 if __name__ == "__main__":
-    patch_size = 42
+    patch_size = 32
     dataset = FFPPVideoDataset(phase="train", patch_size=patch_size)
     for item in dataset:
         frames = item["frames"]
