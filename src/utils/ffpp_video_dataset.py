@@ -31,6 +31,7 @@ class FFPPVideoDataset(Dataset):
         dataset_root: str = "data/FaceForensics++/",
         landmark_path: str = "/landmarks/",
         patch_size: int = 32,
+        verbose: bool = False,
     ):
 
         assert phase in ["train", "val", "test"]
@@ -52,6 +53,7 @@ class FFPPVideoDataset(Dataset):
         self.dataset_root = Path(dataset_root)
         self.landmark_path = landmark_path
         self.patch_size = patch_size
+        self.verbose = verbose
 
         self.image_dict, self.label_dict = self._get_datalist()
         self.transform = self.get_transforms()
@@ -241,9 +243,10 @@ class FFPPVideoDataset(Dataset):
                 flag = False
 
             except Exception as e:
-                print(
-                    f"[yellow]failed to load frame {frame_path} of video {video_name} due to {str(e)}[/yellow]"
-                )
+                if self.verbose:
+                    print(
+                        f"[yellow]failed to load frame {frame_path} of video {video_name} due to {str(e)}[/yellow]"
+                    )
                 index = random.randint(0, len(self))
 
         image_list = torch.stack(image_list, axis=0)
@@ -425,7 +428,7 @@ def visualize_patches(image, landmarks, patches, patch_size=32, out="patches.png
 
 if __name__ == "__main__":
     patch_size = 32
-    dataset = FFPPVideoDataset(phase="train", patch_size=patch_size)
+    dataset = FFPPVideoDataset(phase="train", image_size=336, patch_size=patch_size)
     for item in dataset:
         frames = item["frames"]
         landmarks = item["landmarks"]

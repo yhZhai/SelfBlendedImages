@@ -87,6 +87,15 @@ def get_sha():
     return {"sha": sha, "status": diff, "branch": branch, "prev_commit": message}
 
 
+def set_determinsitic(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+
+
 def setup_env(opt, file_list=None):
     if opt.eval or opt.debug:
         opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -103,7 +112,7 @@ def setup_env(opt, file_list=None):
         for x in ["eval", "debug", "time_stamp", "dir_name", "save_root_path", "suffix"]
     ]
     wandb.init(
-        project="NIPS2023-Deepfake",
+        project="ICLR2024-Deepfake",
         entity="had0w",
         name=opt.dir_name,
         tags=["wholetest"] if wholetest else None,
@@ -128,12 +137,7 @@ def setup_env(opt, file_list=None):
     if not os.path.exists(save_root_path):
         os.mkdir(save_root_path)
 
-    # deterministic
-    torch.manual_seed(opt.seed)
-    np.random.seed(opt.seed)
-    random.seed(opt.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = True
+    set_determinsitic(opt.seed)
 
     # mkdir subdirectories
     run_env = "run_env"

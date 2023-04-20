@@ -1,6 +1,4 @@
 from datetime import datetime
-import argparse
-import random
 import os
 
 from tqdm import tqdm
@@ -8,17 +6,17 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 from sklearn.metrics import confusion_matrix, roc_auc_score
 
 from utils.ffpp_video_dataset import FFPPVideoDataset
 from utils.scheduler import LinearDecayLR
 from utils.logs import log
 from utils.funcs import load_json
+from utils.misc import set_determinsitic
 from model import Detector
-from networks.xception import TransferModel
-from engine import train, evaluate
+from models.st_transformer import SpatioTemporalTransformer
 from opt import get_argument_parser
+from engine import train, evaluate
 
 
 def compute_accuray(pred, true):
@@ -27,59 +25,51 @@ def compute_accuray(pred, true):
     return sum(tmp) / len(pred_idx)
 
 
-def main(args):
-    cfg = load_json(args.config)
-    n_epoch = cfg["epoch"]
+def main(opt):
+    writer = None
 
-    seed = 42
-    random.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    set_determinsitic()
 
-    device = torch.device("cuda")
-
-    image_size = cfg["image_size"]
-    batch_size = cfg["batch_size"]
-    # train_dataset = SBI_Dataset(phase="train", image_size=image_size)
-    # val_dataset = SBI_Dataset(phase="val", image_size=image_size)
     train_dataset = FFPPVideoDataset(
-        phase="train", image_size=image_size, n_frames=1)
+        phase="train", image_size=opt.image_size, n_frames=opt.num_frame, verbose=opt.verbose)
     val_dataset = FFPPVideoDataset(
-        phase="val", image_size=image_size, n_frames=1)
+        phase="val", image_size=opt.image_size, n_frames=opt.num_frame, verbose=opt.verbose)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=batch_size,
+        batch_size=opt.batch_size,
         shuffle=True,
-        num_workers=0,
+        num_workers=0 if opt.debug else opt.num_workers,
         pin_memory=True,
     )
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
-        batch_size=batch_size,
+        batch_size=opt.batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=0 if opt.debug else opt.num_workers,
         pin_memory=True,
     )
 
-    model = TransferModel('xception', dropout=0.5, return_fea=False)
-    model = model.to("cuda")
+    model = SpatioTemporalTransformer(num_layers=3).to(opt.device)
     n_param = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of parameters: {}".format(n_param))
 
-    # optimizer
-    optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=int(n_epoch / 4 * 3), gamma=0.1)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=opt.lr)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, opt.scheduler_steps, gamma=0.1)
 
-    # criterion
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss().to(opt.device)
 
-    # for epoch in range(opt.epochs):
-    #     train(model, train_loader, optimizer, criterion, epoch, writer, opt)
+    if opt.resume:
+        pass  # TODO
 
+    if opt.eval:
+        pass  # TODO
+        return
+    
+    for epoch in range(opt.epochs):
+        train(model, train_loader, optimizer, criterion, epoch, writer, opt)
+        scheduler.step()
+        
 
     iter_loss = []
     train_losses = []
@@ -90,18 +80,18 @@ def main(args):
     val_losses = []
     last_loss = 99999
 
-    now = datetime.now()
-    save_path = (
-        "output/{}_".format(args.session_name)
-        + now.strftime(os.path.splitext(os.path.basename(args.config))[0])
-        + "_"
-        + now.strftime("%m_%d_%H_%M_%S")
-        + "/"
-    )
-    os.mkdir(save_path)
-    os.mkdir(save_path + "weights/")
-    os.mkdir(save_path + "logs/")
-    logger = log(path=save_path + "logs/", file="losses.logs")
+    # now = datetime.now()
+    # save_path = (
+    #     "output/{}_".format(args.session_name)
+    #     + now.strftime(os.path.splitext(os.path.basename(args.config))[0])
+    #     + "_"
+    #     + now.strftime("%m_%d_%H_%M_%S")
+    #     + "/"
+    # )
+    # os.mkdir(save_path)
+    # os.mkdir(save_path + "weights/")
+    # os.mkdir(save_path + "logs/")
+    # logger = log(path=save_path + "logs/", file="losses.logs")
 
     criterion = nn.CrossEntropyLoss()
 
@@ -113,23 +103,22 @@ def main(args):
         np.random.seed(seed + epoch)
         train_loss = 0.0
         train_acc = 0.0
-        model.train()
+        model.train(mode=True)
         for step, data in enumerate(tqdm(train_loader, desc=f"[{epoch}] train")):
+            landmarks = data["landmarks"].to(device).float()
+            patches = data["patches"].to(device).float()
+            out = stt(landmarks, patches)
+
             img = data["frames"].to(device).float()[:, 0]
             target = data["label"].to(device).long()
-            
-            optimizer.zero_grad()
-            output = model(img)
+            output = model.training_step(img, target)
             loss = criterion(output, target)
-            loss.backward()
-            optimizer.step()
-
             loss_value = loss.item()
             iter_loss.append(loss_value)
             train_loss += loss_value
             acc = compute_accuray(F.log_softmax(output, dim=1), target)
             train_acc += acc
-        scheduler.step()
+        lr_scheduler.step()
         train_losses.append(train_loss / len(train_loader))
         train_accs.append(train_acc / len(train_loader))
 
@@ -140,7 +129,7 @@ def main(args):
             train_acc / len(train_loader),
         )
 
-        model.eval()
+        model.train(mode=False)
         val_loss = 0.0
         val_acc = 0.0
         output_dict = []
@@ -177,7 +166,7 @@ def main(args):
             torch.save(
                 {
                     "model": model.state_dict(),
-                    "optimizer":optimizer.state_dict(),
+                    "optimizer": model.optimizer.state_dict(),
                     "epoch": epoch,
                 },
                 save_model_path,
@@ -198,7 +187,7 @@ def main(args):
             torch.save(
                 {
                     "model": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
+                    "optimizer": model.optimizer.state_dict(),
                     "epoch": epoch,
                 },
                 save_model_path,
@@ -209,9 +198,8 @@ def main(args):
 
 
 if __name__ == "__main__":
+    parser = get_argument_parser()
+    opt = parser.parse_args()
+    opt.device = torch.device("cuda")
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument(dest="config")
-    parser.add_argument("-n", dest="session_name")
-    args = parser.parse_args()
-    main(args)
+    main(opt)

@@ -40,10 +40,10 @@ def custom_crop_face(
     img,
     landmark=None,
     bbox=None,
-    abs_coord=False,
     only_img=False,
     phase="train",
-    train_rand=None
+    train_rand=None,
+    margin_factor=1/8,
 ):
     """
     Customizations:
@@ -82,10 +82,10 @@ def custom_crop_face(
     x1, y1 = bbox[1]
     w = x1 - x0
     h = y1 - y0
-    w0_margin = w / 4
-    w1_margin = w / 4
-    h0_margin = h / 4
-    h1_margin = h / 4
+    w0_margin = w * margin_factor
+    w1_margin = w * margin_factor
+    h0_margin = h * margin_factor
+    h1_margin = h * margin_factor
 
     if phase == "train":
         if train_rand:

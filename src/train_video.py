@@ -15,13 +15,10 @@ from utils.scheduler import LinearDecayLR
 from utils.logs import log
 from utils.funcs import load_json
 from model import Detector
+from models.st_transformer import SpatioTemporalTransformer
 from networks.xception import TransferModel
 
 
-def compute_accuray(pred, true):
-    pred_idx = pred.argmax(dim=1).cpu().data.numpy()
-    tmp = pred_idx == true.cpu().numpy()
-    return sum(tmp) / len(pred_idx)
 
 
 def main(args):
@@ -41,8 +38,8 @@ def main(args):
     batch_size = cfg["batch_size"]
     # train_dataset = SBI_Dataset(phase="train", image_size=image_size)
     # val_dataset = SBI_Dataset(phase="val", image_size=image_size)
-    train_dataset = FFPPVideoDataset(phase="train", image_size=image_size, n_frames=1)
-    val_dataset = FFPPVideoDataset(phase="val", image_size=image_size, n_frames=1)
+    train_dataset = FFPPVideoDataset(phase="train", image_size=image_size, n_frames=8)
+    val_dataset = FFPPVideoDataset(phase="val", image_size=image_size, n_frames=8)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -59,16 +56,16 @@ def main(args):
         pin_memory=True,
     )
 
-    # model = Detector()
-    # n_param = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    # print("Number of parameters: {}".format(n_param))
-
-    model = TransferModel('xception', dropout=0.5, return_fea=True)
-    model = model.to("cuda")
+    model = Detector()
     n_param = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Number of parameters: {}".format(n_param))
 
-    # model = model.to("cuda")
+    # model = TransferModel('xception', dropout=0.5, return_fea=True)
+    # n_param = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    # print("Number of parameters: {}".format(n_param))
+
+    model = model.to("cuda")
+    stt = SpatioTemporalTransformer().to("cuda")
 
     iter_loss = []
     train_losses = []
@@ -79,6 +76,7 @@ def main(args):
     val_losses = []
     n_epoch = cfg["epoch"]
     last_loss = 99999
+    lr_scheduler = LinearDecayLR(model.optimizer, n_epoch, int(n_epoch / 4 * 3))
 
     now = datetime.now()
     save_path = (
@@ -105,6 +103,10 @@ def main(args):
         train_acc = 0.0
         model.train(mode=True)
         for step, data in enumerate(tqdm(train_loader, desc=f"[{epoch}] train")):
+            landmarks = data["landmarks"].to(device).float()
+            patches = data["patches"].to(device).float()
+            out = stt(landmarks, patches)
+
             img = data["frames"].to(device).float()[:, 0]
             target = data["label"].to(device).long()
             output = model.training_step(img, target)
