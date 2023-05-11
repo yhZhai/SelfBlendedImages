@@ -4,36 +4,36 @@
 # Copyright (c) 2021
 # 3rd party softwares' licenses are noticed at https://github.com/mapooon/SelfBlendedImages/blob/master/LICENSE
 
-import torch
-from torchvision import datasets, transforms, utils
-from torch.utils.data import Dataset, IterableDataset
-from glob import glob
 import os
-import numpy as np
-from PIL import Image
 import random
 import cv2
-from torch import nn
 import sys
+import warnings
+import logging
+from glob import glob
+
+from rich import print
+import numpy as np
+from PIL import Image
+import torch
+from torch.utils.data import Dataset, IterableDataset
+from torchvision import datasets, transforms, utils
 import albumentations as alb
 
-import warnings
 
 warnings.filterwarnings("ignore")
 
-
-import logging
-
-if os.path.isfile("/app/src/utils/library/bi_online_generation.py"):
-    sys.path.append("/app/src/utils/library/")
-    print("exist library")
+if os.path.isfile("src/utils/library/bi_online_generation.py"):
+    sys.path.append("src/utils/library")
+    print("[blue]library exists[/blue]")
     exist_bi = True
 else:
+    print("[red]library does not exist[/red]")
     exist_bi = False
 
 
 class SBI_Dataset(Dataset):
-    def __init__(self, phase="train", image_size=224, n_frames=8):
+    def __init__(self, phase="train", image_size=224, n_frames=8, dataset_path="data/FaceForensics++/original_sequences/youtube/raw/frames/"):
         """
         Initializes the SBI_Dataset object with the specified phase, image size, and number of frames.
 
@@ -53,7 +53,7 @@ class SBI_Dataset(Dataset):
 
         assert phase in ["train", "val", "test"]
 
-        image_list, label_list = init_ff(phase, "frame", n_frames=n_frames)
+        image_list, label_list = init_ff(phase, "frame", n_frames=n_frames, dataset_path=dataset_path)
 
         path_lm = "/landmarks/"
         label_list = [

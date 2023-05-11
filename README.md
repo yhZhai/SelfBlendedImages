@@ -129,11 +129,9 @@ git clone https://github.com/AlgoHunt/Face-Xray.git src/utils/library
 ```
 Even if you do not download it, our training code works without any error. (The performance of trained model is expected to be lower than with it.)
 
-5. Run the training:
+5. Run the training
 ```bash
-CUDA_VISIBLE_DEVICES=* python3 src/train_sbi.py \
-src/configs/sbi/base.json \
--n sbi
+CUDA_VISIBLE_DEVICES=0 python src/train_sbi.py -n sbi
 ```
 Top five checkpoints will be saved in `./output/` folder. As described in our paper, we use the latest one for evaluations.
 

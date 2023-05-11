@@ -7,13 +7,15 @@ from utils.sam import SAM
 
 
 class Detector(nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super(Detector, self).__init__()
         self.net = EfficientNet.from_pretrained(
             "efficientnet-b4", advprop=True, num_classes=2
         )
         self.cel = nn.CrossEntropyLoss()
-        self.optimizer = SAM(self.parameters(), torch.optim.SGD, lr=0.001, momentum=0.9)
+        self.optimizer = SAM(
+            self.parameters(), torch.optim.SGD, lr=args.lr, momentum=args.momentum
+        )
 
     def forward(self, x):
         x = self.net(x)
