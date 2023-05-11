@@ -1,26 +1,16 @@
-import os
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torchvision import datasets, transforms, models, utils
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import pandas as pd
-from PIL import Image
-import sys
 import random
-import shutil
-from model import Detector
 import argparse
-from datetime import datetime
+import warnings
+
 from tqdm import tqdm
+import numpy as np
+import torch
+from sklearn.metrics import confusion_matrix, roc_auc_score
+
+from datasets import *
+from model import Detector
 from retinaface.pre_trained_models import get_model
 from preprocess import extract_frames
-from datasets import *
-from sklearn.metrics import confusion_matrix, roc_auc_score
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -29,7 +19,7 @@ def main(args):
 
     model = Detector()
     model = model.to(device)
-    cnn_sd = torch.load(args.weight_name)["model"]
+    cnn_sd = torch.load(args.weight_name, map_location="cpu")["model"]
     model.load_state_dict(cnn_sd)
     model.eval()
 
