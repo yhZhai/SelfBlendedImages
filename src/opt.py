@@ -21,6 +21,8 @@ def get_parser():
         type=str,
         default="data/FaceForensics++/original_sequences/youtube/c23/frames/",
     )
+    # eval
+    parser.add_argument("--eval_freq", type=int, default=2)
 
     # train
     parser.add_argument("--num_epoch", type=int, default=100)

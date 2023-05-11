@@ -70,6 +70,9 @@ def main(args):
         train(model, criterion, train_loader, writer, epoch, args)
         lr_scheduler.step()
 
+        if not (epoch % args.eval_freq == 0 or epoch == args.num_epoch - 1):
+            continue
+
         np.random.seed(args.seed)
         val_auc = eval(model, criterion, val_loader, writer, epoch, args)
 
