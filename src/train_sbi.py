@@ -15,6 +15,7 @@ from model import Detector
 from utils.sbi import SBI_Dataset
 from utils.scheduler import LinearDecayLR
 from utils.misc import setup_env
+from engine import train, eval
 
 
 def compute_accuray(pred, true):
@@ -26,8 +27,12 @@ def compute_accuray(pred, true):
 def main(args):
     writer = setup_env(args)
 
-    train_dataset = SBI_Dataset(phase="train", image_size=args.image_size, dataset_path=args.dataset_path)
-    val_dataset = SBI_Dataset(phase="val", image_size=args.image_size, dataset_path=args.dataset_path)
+    train_dataset = SBI_Dataset(
+        phase="train", image_size=args.image_size, dataset_path=args.dataset_path
+    )
+    val_dataset = SBI_Dataset(
+        phase="val", image_size=args.image_size, dataset_path=args.dataset_path
+    )
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -50,83 +55,28 @@ def main(args):
     )
 
     model = Detector(args)
-
     model = model.to("cuda")
 
-    iter_loss = []
-    train_losses = []
-    train_accs = []
-    val_accs = []
-    val_losses = []
     lr_scheduler = LinearDecayLR(
         model.optimizer, args.num_epoch, int(args.num_epoch / 4 * 3)
     )
-
-    # logger = log(path=args.dir_path, file="losses.logs")
 
     criterion = nn.CrossEntropyLoss()
 
     last_val_auc = 0
     weight_dict = {}
-    n_weight = 5
     for epoch in range(args.num_epoch):
-        # np.random.seed(seed + epoch)
-        train_loss = 0.0
-        train_acc = 0.0
-        model.train(mode=True)
-        for step, data in enumerate(tqdm(train_loader)):
-            img = data["img"].to(args.device, non_blocking=True).float()
-            target = data["label"].to(args.device, non_blocking=True).long()
-            output = model.training_step(img, target)
-            loss = criterion(output, target)
-            loss_value = loss.item()
-            iter_loss.append(loss_value)
-            train_loss += loss_value
-            acc = compute_accuray(F.log_softmax(output, dim=1), target)
-            train_acc += acc
+        np.random.seed(args.seed + epoch)
+        train(model, criterion, train_loader, writer, epoch, args)
         lr_scheduler.step()
-        train_losses.append(train_loss / len(train_loader))
-        train_accs.append(train_acc / len(train_loader))
 
-        log_text = "Epoch {}/{} | train loss: {:.4f}, train acc: {:.4f}, ".format(
-            epoch + 1,
-            args.num_epoch,
-            train_loss / len(train_loader),
-            train_acc / len(train_loader),
-        )
-
-        model.train(mode=False)
-        val_loss = 0.0
-        val_acc = 0.0
-        output_dict = []
-        target_dict = []
-        # np.random.seed(seed)
-        for step, data in enumerate(tqdm(val_loader)):
-            img = data["img"].to(args.device, non_blocking=True).float()
-            target = data["label"].to(args.device, non_blocking=True).long()
-
-            with torch.no_grad():
-                output = model(img)
-                loss = criterion(output, target)
-
-            loss_value = loss.item()
-            iter_loss.append(loss_value)
-            val_loss += loss_value
-            acc = compute_accuray(F.log_softmax(output, dim=1), target)
-            val_acc += acc
-            output_dict += output.softmax(1)[:, 1].cpu().data.numpy().tolist()
-            target_dict += target.cpu().data.numpy().tolist()
-        val_losses.append(val_loss / len(val_loader))
-        val_accs.append(val_acc / len(val_loader))
-        val_auc = roc_auc_score(target_dict, output_dict)
-        log_text += "val loss: {:.4f}, val acc: {:.4f}, val auc: {:.4f}".format(
-            val_loss / len(val_loader), val_acc / len(val_loader), val_auc
-        )
+        np.random.seed(args.seed)
+        val_auc = eval(model, criterion, val_loader, writer, epoch, args)
 
         save_model_path = Path(
             args.dir_path, "checkpoints", "{}_{:.4f}_val.tar".format(epoch + 1, val_auc)
         )
-        if len(weight_dict) < n_weight:
+        if len(weight_dict) < args.num_weight:
             weight_dict[save_model_path] = val_auc
             torch.save(
                 {
@@ -154,8 +104,6 @@ def main(args):
                 save_model_path,
             )
             last_val_auc = min([weight_dict[k] for k in weight_dict])
-
-        # logger.info(log_text)
 
 
 if __name__ == "__main__":

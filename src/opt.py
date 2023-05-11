@@ -16,7 +16,11 @@ def get_parser():
     parser.add_argument("--image_size", type=int, default=380)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_worker", type=int, default=8)
-    parser.add_argument("--dataset_path", type=str, default="data/FaceForensics++/original_sequences/youtube/c23/frames/")
+    parser.add_argument(
+        "--dataset_path",
+        type=str,
+        default="data/FaceForensics++/original_sequences/youtube/c23/frames/",
+    )
 
     # train
     parser.add_argument("--num_epoch", type=int, default=100)
@@ -26,6 +30,10 @@ def get_parser():
     # save
     parser.add_argument("--save_root_path", type=str, default="work_dir")
     parser.add_argument("--session", type=str, default="sbi")
+    parser.add_argument("--num_weight", type=int, default=5)
+
+    # misc
+    parser.add_argument("--print_freq", type=int, default=20)
     return parser
 
 
