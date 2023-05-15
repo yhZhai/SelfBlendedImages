@@ -4,9 +4,11 @@ import warnings
 from pathlib import Path
 
 import h5py
+from torch.utils.data.dataset import ConcatDataset, Dataset
 from tqdm import tqdm
 import numpy as np
 import torch
+from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import confusion_matrix, roc_auc_score
 
 from datasets import *
@@ -15,6 +17,31 @@ from retinaface.pre_trained_models import get_model
 from preprocess import extract_frames
 
 warnings.filterwarnings("ignore")
+
+class HDF5Dataset(Dataset):
+    def __init__(self, video_list, dataset_name, num_frames: int, cache_root: str = ".cache"):
+        super().__init__()
+        self.video_list = video_list
+        self.dataset_name = dataset_name
+        self.num_frames = num_frames
+        self.cache_root = cache_root
+    
+    def __len__(self):
+        return len(self.video_list)
+    
+    def __getitem__(self, index):
+        filename = self.video_list[index]
+        cache_path = Path(self.cache_root, self.dataset_name.lower(), Path(filename).stem + ".hdf5")
+        assert cache_path.exists()
+        with h5py.File(cache_path, "r") as f:
+            face_list = f["frames"]
+            idx_list = f["indices"]
+            sel_indices = random.sample(range(face_list.shape[0]), self.num_frames)
+            sel_indices = sorted(sel_indices)
+            face_list = np.array([face_list[i] for i in sel_indices])
+            idx_list = np.array([idx_list[i] for i in sel_indices])
+        
+        return face_list, idx_list
 
 
 def get_frames(filename, num_frames: int, face_detector, dataset_name: str, cache_root: str = ".cache"):
@@ -63,12 +90,27 @@ def main(args):
         video_list, target_list = init_cdf()
     else:
         NotImplementedError
+ 
+    use_hdf5 = False
+    if Path(args.cache_root, args.dataset.lower()).exists():
+        use_hdf5 = True
+        dataset = HDF5Dataset(video_list, args.dataset.lower(), args.n_frames, args.cache_root)
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=16, pin_memory=True)
+        print("Using HDF5 dataset")
+    else:
+        dataloader = video_list
+        print("Using raw dataset")
 
     output_list = []
-    for filename in tqdm(video_list):
+    for data in tqdm(dataloader):
         try:
-            face_list, idx_list = get_frames(filename, args.n_frames, face_detector, args.dataset)
-            # face_list, idx_list = extract_frames(filename, args.n_frames, face_detector)
+            if use_hdf5:
+                face_list, idx_list = data
+                face_list = face_list.squeeze(0)
+                idx_list = idx_list.squeeze(0)
+            else:
+                filename = data
+                face_list, idx_list = get_frames(filename, args.n_frames, face_detector, args.dataset)
 
             with torch.no_grad():
                 img = torch.tensor(face_list).to(device).float() / 255
@@ -108,6 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("-w", dest="weight_name", type=str)
     parser.add_argument("-d", dest="dataset", type=str)
     parser.add_argument("-n", dest="n_frames", default=32, type=int)
+    parser.add_argument("--cache_root", default=".cache", type=str)
     args = parser.parse_args()
 
     main(args)
