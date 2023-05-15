@@ -25,6 +25,32 @@
             "env": {
                 "CUDA_VISIBLE_DEVICES": "2"
             }
+        },
+        {
+            "name": "cdf val: inference_dataset.py",
+            "type": "python",
+            "request": "launch",
+            "program": "src/inference/inference_dataset.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-w", "work_dir/2023-05-11T11-21-24_sbi/checkpoints/141_0.9994_val.tar",
+                "-d", "CDF"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "4"
+            }
+        },
+        {
+            "name": "preprocess.py",
+            "type": "python",
+            "request": "launch",
+            "program": "src/inference/preprocess.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "4"
+            }
         }
     ]
 }

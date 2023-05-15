@@ -54,8 +54,11 @@ def main(args):
         worker_init_fn=val_dataset.worker_init_fn,
     )
 
+    # model
     model = Detector(args)
     model = model.to("cuda")
+    n_parameters = sum([p.numel() for p in model.parameters() if p.requires_grad])
+    print('Number of parameters:', n_parameters)
 
     lr_scheduler = LinearDecayLR(
         model.optimizer, args.num_epoch, int(args.num_epoch / 4 * 3)

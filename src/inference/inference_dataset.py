@@ -1,7 +1,9 @@
 import random
 import argparse
 import warnings
+from pathlib import Path
 
+import h5py
 from tqdm import tqdm
 import numpy as np
 import torch
@@ -15,7 +17,28 @@ from preprocess import extract_frames
 warnings.filterwarnings("ignore")
 
 
+def get_frames(filename, num_frames: int, face_detector, dataset_name: str, cache_root: str = ".cache"):
+    cache_path = Path(cache_root, dataset_name.lower(), Path(filename).stem + ".hdf5")
+    if cache_path.exists():
+        try:
+            with h5py.File(cache_path, "r") as f:
+                face_list = f["frames"]
+                idx_list = f["indices"]
+                sel_indices = random.sample(range(face_list.shape[0]), num_frames)
+                sel_indices = sorted(sel_indices)
+                face_list = np.array([face_list[i] for i in sel_indices])
+                idx_list = np.array([idx_list[i] for i in sel_indices])
+        except Exception as e:
+            print("Error in reading cache file:", e)
+            face_list, idx_list = extract_frames(filename, args.n_frames, face_detector)
+        return face_list, idx_list
+    else:
+        face_list, idx_list = extract_frames(filename, args.n_frames, face_detector)
+    return face_list, idx_list
+
+
 def main(args):
+    device = torch.device("cuda")
 
     model = Detector()
     model = model.to(device)
@@ -44,7 +67,8 @@ def main(args):
     output_list = []
     for filename in tqdm(video_list):
         try:
-            face_list, idx_list = extract_frames(filename, args.n_frames, face_detector)
+            face_list, idx_list = get_frames(filename, args.n_frames, face_detector, args.dataset)
+            # face_list, idx_list = extract_frames(filename, args.n_frames, face_detector)
 
             with torch.no_grad():
                 img = torch.tensor(face_list).to(device).float() / 255
@@ -79,8 +103,6 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
-    device = torch.device("cuda")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-w", dest="weight_name", type=str)

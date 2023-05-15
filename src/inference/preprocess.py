@@ -1,40 +1,45 @@
-import sys
 import os
+from pathlib import Path
 
+from tqdm import tqdm
+from rich import print
 import numpy as np
 import cv2
 from PIL import Image
-from tqdm import tqdm
+import torch
 
 
-def extract_frames(filename, num_frames, model, image_size=(380, 380)):
+def extract_frames(filename, num_frames, model, image_size=(380, 380), extract_every_frame: bool = False):
+    if extract_every_frame:
+        print("[red]Extracting every frame, num_frames with be useless[/red]")
+
     cap_org = cv2.VideoCapture(filename)
 
     if not cap_org.isOpened():
         print(f"Cannot open: {filename}")
-        # sys.exit()
         return []
 
     croppedfaces = []
     idx_list = []
     frame_count_org = int(cap_org.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    frame_idxs = np.linspace(
-        0, frame_count_org - 1, num_frames, endpoint=True, dtype=int
-    )
-    for cnt_frame in range(frame_count_org):
+    if not extract_every_frame:
+        frame_idxs = np.linspace(
+            0, frame_count_org - 1, num_frames, endpoint=True, dtype=int
+        )
+    else:
+        frame_idxs = np.arange(frame_count_org)
+
+    for index in list(frame_idxs):
+        cap_org.set(cv2.CAP_PROP_POS_FRAMES, index)
         ret_org, frame_org = cap_org.read()
-        height, width = frame_org.shape[:-1]
         if not ret_org:
             tqdm.write(
                 "Frame read {} Error! : {}".format(
-                    cnt_frame, os.path.basename(filename)
+                    index, os.path.basename(filename)
                 )
             )
             break
-
-        if cnt_frame not in frame_idxs:
-            continue
 
         frame = cv2.cvtColor(frame_org, cv2.COLOR_BGR2RGB)
 
@@ -42,7 +47,7 @@ def extract_frames(filename, num_frames, model, image_size=(380, 380)):
         try:
             if len(faces) == 0:
                 tqdm.write(
-                    "No faces in {}:{}".format(cnt_frame, os.path.basename(filename))
+                    "No faces in {}:{}".format(index, os.path.basename(filename))
                 )
                 continue
 
@@ -67,7 +72,7 @@ def extract_frames(filename, num_frames, model, image_size=(380, 380)):
                         dsize=image_size,
                     ).transpose((2, 0, 1))
                 )
-                idx_list_temp.append(cnt_frame)
+                idx_list_temp.append(index)
                 size_list.append((x1 - x0) * (y1 - y0))
 
             max_size = max(size_list)
@@ -84,7 +89,7 @@ def extract_frames(filename, num_frames, model, image_size=(380, 380)):
             croppedfaces += croppedfaces_temp
             idx_list += idx_list_temp
         except Exception as e:
-            print(f"error in {cnt_frame}:{filename}")
+            print(f"error in {index}:{filename}")
             print(e)
             continue
     cap_org.release()
@@ -215,3 +220,33 @@ def crop_face(
             bbox_cropped,
             (y0 - y0_new, x0 - x0_new, y1_new - y1, x1_new - x1),
         )
+
+
+def extract_and_save_to_hdf5(video_list, target_list, target_path):
+    import h5py
+    from retinaface.pre_trained_models import get_model
+
+    Path(target_path).mkdir(parents=True, exist_ok=True)
+
+    device = torch.device("cuda")
+    face_detector = get_model("resnet50_2020-07-20", max_size=2048, device=device)
+    face_detector.eval()
+    for filename in tqdm(video_list):
+        face_list, idx_list = extract_frames(filename, 32, face_detector, extract_every_frame=True)
+        video_name = Path(filename).stem
+        save_path = Path(target_path, video_name + ".hdf5")
+        with h5py.File(save_path, "w") as f:
+            frame_dataset = f.create_dataset('frames', (len(face_list), *face_list[0].shape), dtype='uint8', compression="gzip", compression_opts=9)
+            index_dataset = f.create_dataset('indices', (len(idx_list),), dtype='int64')
+
+            for i in range(len(face_list)):
+                frame_dataset[i] = face_list[i]
+                index_dataset[i] = idx_list[i]
+
+
+if __name__ == "__main__":
+    
+    from datasets import *
+    video_list, target_list = init_cdf()
+
+    extract_and_save_to_hdf5(video_list, target_list, ".cache/cdf")

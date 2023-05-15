@@ -178,6 +178,7 @@ pyrightconfig.json
 
 data/Celeb-DF-v2/
 data/FaceForensics++/
+data/Deeperforensics/
 output/
 retinaface_pkg/
 face.png
