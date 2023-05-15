@@ -1,4 +1,5 @@
 import os
+import base64
 from pathlib import Path
 
 from tqdm import tqdm
@@ -233,7 +234,7 @@ def extract_and_save_to_hdf5(video_list, target_list, target_path):
     face_detector.eval()
     for filename in tqdm(video_list):
         face_list, idx_list = extract_frames(filename, 32, face_detector, extract_every_frame=True)
-        video_name = Path(filename).stem
+        video_name = base64.b64encode(filename.encode()).decode()
         save_path = Path(target_path, video_name + ".hdf5")
         with h5py.File(save_path, "w") as f:
             frame_dataset = f.create_dataset('frames', (len(face_list), *face_list[0].shape), dtype='uint8', compression="gzip", compression_opts=9)
@@ -247,6 +248,6 @@ def extract_and_save_to_hdf5(video_list, target_list, target_path):
 if __name__ == "__main__":
     
     from datasets import *
-    video_list, target_list = init_cdf()
+    video_list, target_list = init_ff()
 
-    extract_and_save_to_hdf5(video_list, target_list, ".cache/cdf")
+    extract_and_save_to_hdf5(video_list, target_list, ".cache/ff")

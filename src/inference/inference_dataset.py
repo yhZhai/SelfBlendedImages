@@ -64,6 +64,21 @@ def get_frames(filename, num_frames: int, face_detector, dataset_name: str, cach
     return face_list, idx_list
 
 
+def update_result(weight_name, output_file, dataset, auc):
+    output_path = Path(weight_name).parents[1] / Path(output_file)
+    if Path(output_path).exists():
+        with open(output_path, "r") as f:
+            result = json.load(f)
+    else:
+        result = {}
+    
+    if weight_name not in result:
+        result[Path(weight_name).stem] = {}
+    result[Path(weight_name).stem][dataset] = auc
+    with open(output_path, "w") as f:
+        json.dump(result, f)
+    
+
 def main(args):
     device = torch.device("cuda")
 
@@ -102,7 +117,7 @@ def main(args):
         print("Using raw dataset")
 
     output_list = []
-    for data in tqdm(dataloader):
+    for idx, data in tqdm(enumerate(dataloader), total=len(dataloader)):
         try:
             if use_hdf5:
                 face_list, idx_list = data
@@ -133,6 +148,7 @@ def main(args):
         output_list.append(pred)
 
     auc = roc_auc_score(target_list, output_list)
+    update_result(args.weight_name, args.output_file, args.dataset, auc)
     print(f"{args.dataset}| AUC: {auc:.4f}")
 
 
@@ -151,6 +167,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", dest="dataset", type=str)
     parser.add_argument("-n", dest="n_frames", default=32, type=int)
     parser.add_argument("--cache_root", default=".cache", type=str)
+    parser.add_argument("--output_file", default="result.json", type=str)
     args = parser.parse_args()
 
     main(args)
