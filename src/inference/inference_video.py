@@ -19,11 +19,54 @@ from tqdm import tqdm
 from retinaface.pre_trained_models import get_model
 from preprocess import extract_frames
 import warnings
+from torchvision.transforms.functional import normalize, resize, to_pil_image
+from matplotlib import cm
+
 
 warnings.filterwarnings("ignore")
 
+def overlay_mask(img: Image.Image, mask: Image.Image, colormap: str = "jet", alpha: float = 0.7) -> Image.Image:
+    """Overlay a colormapped mask on a background image
+
+    >>> from PIL import Image
+    >>> import matplotlib.pyplot as plt
+    >>> from torchcam.utils import overlay_mask
+    >>> img = ...
+    >>> cam = ...
+    >>> overlay = overlay_mask(img, cam)
+
+    Args:
+        img: background image
+        mask: mask to be overlayed in grayscale
+        colormap: colormap to be applied on the mask
+        alpha: transparency of the background image
+
+    Returns:
+        overlayed image
+
+    Raises:
+        TypeError: when the arguments have invalid types
+        ValueError: when the alpha argument has an incorrect value
+    """
+
+    if not isinstance(img, Image.Image) or not isinstance(mask, Image.Image):
+        raise TypeError("img and mask arguments need to be PIL.Image")
+
+    if not isinstance(alpha, float) or alpha < 0 or alpha >= 1:
+        raise ValueError("alpha argument is expected to be of type float between 0 and 1")
+
+    cmap = cm.get_cmap(colormap)
+    # Resize mask and apply colormap
+    overlay = mask.resize(img.size, resample=Image.BICUBIC)
+    overlay = (255 * cmap(np.asarray(overlay) ** 2)[:, :, :3]).astype(np.uint8)
+    # Overlay the image with the mask
+    overlayed_img = Image.fromarray((alpha * np.asarray(img) + (1 - alpha) * overlay).astype(np.uint8))
+
+    return overlayed_img
+
 
 def main(args):
+    device = torch.device("cuda")
 
     model = Detector()
     model = model.to(device)
@@ -39,6 +82,17 @@ def main(args):
     with torch.no_grad():
         img = torch.tensor(face_list).to(device).float() / 255
         pred = model(img).softmax(1)[:, 1]
+
+        # get cam
+        if args.get_cam:
+            cam = model.get_cam(img).softmax(-1)[:,:,:,1]
+            for i in range(cam.shape[0]):
+                result = overlay_mask(to_pil_image(img[i]), to_pil_image(cam[i], mode="F"), alpha=0.5)
+                plt.imshow(result)
+                plt.axis("off")
+                plt.tight_layout()
+                plt.savefig(f"tmp/cam_{i}.png", dpi=300)
+                plt.close()
 
     pred_list = []
     idx_img = -1
@@ -65,12 +119,11 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-    device = torch.device("cuda")
-
     parser = argparse.ArgumentParser()
     parser.add_argument("-w", dest="weight_name", type=str)
     parser.add_argument("-i", dest="input_video", type=str)
     parser.add_argument("-n", dest="n_frames", default=32, type=int)
+    parser.add_argument("--get_cam", action="store_true", default=False)
     args = parser.parse_args()
 
     main(args)
