@@ -179,6 +179,7 @@ pyrightconfig.json
 data/Celeb-DF-v2/
 data/FaceForensics++/
 data/Deeperforensics/
+data/FFIW/
 output/
 retinaface_pkg/
 face.png
@@ -186,3 +187,4 @@ face.png
 src/weights/
 src/preprocess/shape_predictor_81_face_landmarks.dat
 work_dir/
+tmp/

@@ -248,6 +248,7 @@ def extract_and_save_to_hdf5(video_list, target_list, target_path):
 if __name__ == "__main__":
     
     from datasets import *
-    video_list, target_list = init_ff()
+    video_list, target_list = init_ffiw()
 
-    extract_and_save_to_hdf5(video_list, target_list, ".cache/ff")
+    print(len(video_list), len(target_list))
+    extract_and_save_to_hdf5(video_list, target_list, ".cache/ffiw")

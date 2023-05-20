@@ -35,7 +35,8 @@
             "justMyCode": true,
             "args": [
                 "-w", "work_dir/2023-05-11T11-21-24_sbi/checkpoints/141_0.9994_val.tar",
-                "-d", "CDF"
+                // "-d", "CDF",
+                "-d", "FF",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "5"
@@ -51,6 +52,23 @@
             "env": {
                 "CUDA_VISIBLE_DEVICES": "4"
             }
+        },
+        {
+            "name": "Inference video",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/inference/inference_video.py",
+            "justMyCode": true,
+            "args": [
+                "-w",
+                "work_dir/2023-05-11T11-21-24_sbi/checkpoints/141_0.9994_val.tar",
+                "-i",
+                "data/Celeb-DF-v2/Celeb-synthesis/videos/id0_id1_0000.mp4",
+                "--get_cam"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "5"
+            },
         }
     ]
 }

@@ -1,6 +1,7 @@
 import random
 import argparse
 import warnings
+import base64
 from pathlib import Path
 
 import h5py
@@ -32,7 +33,10 @@ class HDF5Dataset(Dataset):
     def __getitem__(self, index):
         filename = self.video_list[index]
         cache_path = Path(self.cache_root, self.dataset_name.lower(), Path(filename).stem + ".hdf5")
-        assert cache_path.exists()
+        if not cache_path.exists():
+            cache_path = Path(self.cache_root, self.dataset_name.lower(), base64.b64encode(filename.encode()).decode() + ".hdf5")
+
+        assert cache_path.exists(), f"Cache file {cache_path} for video {Path(filename).stem} does not exist"
         with h5py.File(cache_path, "r") as f:
             face_list = f["frames"]
             idx_list = f["indices"]
