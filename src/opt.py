@@ -14,7 +14,7 @@ def get_parser():
 
     # data
     parser.add_argument("--image_size", type=int, default=380)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=72)
     parser.add_argument("--num_worker", type=int, default=8)
     parser.add_argument(
         "--dataset_path",

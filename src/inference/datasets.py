@@ -121,3 +121,8 @@ def init_cdf():
             folder_list += ["data/Celeb-DF-v2/" + path[0] + "/videos/" + path[1]]
             label_list += [1 - int(line[0])]
         return folder_list, label_list
+
+
+if __name__ == "__main__":
+    f, l = init_cdf()
+    print("a")
