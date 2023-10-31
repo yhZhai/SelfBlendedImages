@@ -25,7 +25,7 @@ def get_parser():
     parser.add_argument("--eval_freq", type=int, default=2)
 
     # train
-    parser.add_argument("--num_epoch", type=int, default=100)
+    parser.add_argument("--num_epoch", type=int, default=40)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
