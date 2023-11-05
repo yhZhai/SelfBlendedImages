@@ -21,6 +21,7 @@ import torch.nn as nn
 import prettytable as pt
 from torch.utils.tensorboard import SummaryWriter
 from termcolor import cprint
+from loguru import logger
 
 
 class Logger(object):
@@ -98,14 +99,14 @@ def setup_env(opt):
     torch.backends.cudnn.benchmark = True
 
     # mkdir subdirectories
-    checkpoint = Path("checkpoints")
     dir_path = Path(opt.dir_path)
     dir_path.mkdir(parents=True, exist_ok=True)
-    (dir_path / checkpoint).mkdir(parents=True, exist_ok=True)
+    (dir_path / "checkpoints").mkdir(parents=True, exist_ok=True)
 
-    # save log
-    sys.stdout = Logger(dir_path / "log.log", sys.stdout)
-    sys.stderr = Logger(dir_path / "error.log", sys.stderr)
+    # # save log
+    # sys.stdout = Logger(dir_path / "log.log", sys.stdout)
+    # sys.stderr = Logger(dir_path / "error.log", sys.stderr)
+    logger.add((dir_path / "log.log").as_posix())
 
     # save parameters
     params = copy.deepcopy(opt)
@@ -115,15 +116,14 @@ def setup_env(opt):
         json.dump(params, f)
 
     # print info
-    print(
+    logger.info(
         "Running on {}, PyTorch version {}, files will be saved at {}".format(
             opt.device, torch.__version__, dir_path.as_posix()
         )
     )
-    print("Devices:")
-    for i in range(torch.cuda.device_count()):
-        print("\t{}:".format(i), torch.cuda.get_device_name(i))
-    print(f"Git: {get_sha()}.")
+    # for i in range(torch.cuda.device_count()):
+    #     logger.info("\t{}:".format(i), torch.cuda.get_device_name(i))
+    logger.info(f"Git: {get_sha()}.")
 
     # return tensorboard summarywriter
     return SummaryWriter("{}/".format(dir_path.as_posix()))
@@ -167,7 +167,7 @@ class MetricLogger(object):
             if (i + 1) % self.print_freq == 0 or i == len(iterable) - 1:
                 eta_seconds = iter_time.avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-                print(
+                logger.info(
                     log_msg.format(
                         i + 1,
                         len(iterable),
@@ -180,7 +180,7 @@ class MetricLogger(object):
             end = time.time()
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print(
+        logger.info(
             "{} Total time: {} ({:.4f}s / it)".format(
                 header, total_time_str, total_time / len(iterable)
             )

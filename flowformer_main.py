@@ -14,6 +14,7 @@ from src.datasets.image_pair_dataset import ImagePairDataset, ValImagePairDatase
 from src.FlowFormer import build_flowformer
 from src.opt import get_args
 from src.utils.misc import MetricLogger, setup_env
+from loguru import logger
 
 
 def compute_accuray(pred, true):
@@ -23,6 +24,8 @@ def compute_accuray(pred, true):
 
 
 def main(cfg, args):
+    writer = setup_env(args)
+
     # model = build_flowformer(cfg).cuda()
     # state_dict = torch.load("checkpoints/things.pth", map_location="cpu")
     # new_state_dict = OrderedDict()
@@ -67,16 +70,25 @@ def main(cfg, args):
     lr_scheduler = StepLR(opt, step_size=int(args.num_epoch / 4 * 3), gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
+    best_auc = 0
+    best_auc_epoch = 0
     for epoch in range(args.num_epoch):
         if epoch % args.eval_freq == 0:
-            val(cdf_val_loader, model, epoch, args)
+            auc = val(cdf_val_loader, model, epoch, args)
+            logger.info(f"Val AUC: {auc} at epoch {epoch}")
+            if auc > best_auc:
+                best_auc = auc
+                best_auc_epoch = epoch
+                save_model_path = Path(args.dir_path, "checkpoints", "best.pth")
+                torch.save(model.state_dict(), save_model_path)
 
         train(train_loader, model, opt, criterion, epoch, args)
         lr_scheduler.step()
 
         save_model_path = Path(args.dir_path, "checkpoints", "last.pth")
-        save_model_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(model.state_dict(), save_model_path)
+
+        logger.info(f"Best AUC: {best_auc} at epoch {best_auc_epoch}")
 
 
 def val(val_loader, model, epoch, args, writer=None):
@@ -105,8 +117,9 @@ def val(val_loader, model, epoch, args, writer=None):
     auc = roc_auc_score(labels, scores)
     metric_logger.update(auc=auc)
     metric_logger.write_tensorboard(epoch)
-    print("Average status:")
-    print(metric_logger.stat_table())
+    logger.info("Average status:")
+    logger.info(metric_logger.stat_table())
+    return auc
 
 
 def train(train_loader, model, opt, criterion, epoch, args, writer=None):
@@ -131,8 +144,8 @@ def train(train_loader, model, opt, criterion, epoch, args, writer=None):
         metric_logger.update(loss=loss.item(), acc=acc)
 
     metric_logger.write_tensorboard(epoch)
-    print("Average status:")
-    print(metric_logger.stat_table())
+    logger.info("Average status:")
+    logger.info(metric_logger.stat_table())
 
 
 if __name__ == "__main__":

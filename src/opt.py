@@ -22,17 +22,17 @@ def get_parser():
         default="data/FaceForensics++/original_sequences/youtube/c23/frames/",
     )
     # eval
-    parser.add_argument("--eval_freq", type=int, default=5)
+    parser.add_argument("--eval_freq", type=int, default=10)
 
     # train
-    parser.add_argument("--num_epoch", type=int, default=40)
+    parser.add_argument("--num_epoch", type=int, default=80)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
 
     # save
     parser.add_argument("--save_root_path", type=str, default="work_dir")
-    parser.add_argument("--session", type=str, default="flow")
+    parser.add_argument("--session", type=str, default="r50baseline")
     parser.add_argument("--num_weight", type=int, default=5)
 
     # misc
