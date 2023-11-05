@@ -14,7 +14,7 @@ def get_parser():
 
     # data
     parser.add_argument("--image_size", type=int, default=380)
-    parser.add_argument("--batch_size", type=int, default=72)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_worker", type=int, default=8)
     parser.add_argument(
         "--dataset_path",
@@ -22,7 +22,7 @@ def get_parser():
         default="data/FaceForensics++/original_sequences/youtube/c23/frames/",
     )
     # eval
-    parser.add_argument("--eval_freq", type=int, default=2)
+    parser.add_argument("--eval_freq", type=int, default=5)
 
     # train
     parser.add_argument("--num_epoch", type=int, default=40)

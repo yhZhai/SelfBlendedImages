@@ -93,7 +93,9 @@ class FlowDataset(Dataset):
 
 
 class FlowValDataset(Dataset):
-    def __init__(self, dataset_name: str, num_frames: int = 5, flow_suffix: str = ".flo"):
+    def __init__(
+        self, dataset_name: str, num_frames: int = 5, flow_suffix: str = ".flo"
+    ):
         dataset_name = dataset_name.lower()
         assert dataset_name in ["ffiw", "cdf"], f"Invalid dataset name {dataset_name}"
 
@@ -105,10 +107,10 @@ class FlowValDataset(Dataset):
             flow_list, label_list = self._init_ffiw()
         elif dataset_name == "cdf":
             flow_list, label_list = self._init_cdf()
-        
+
         self.flow_list = flow_list
         self.label_list = label_list
-        
+
         self.A_transform = A.Compose(
             [
                 A.SmallestMaxSize(256),
@@ -116,12 +118,12 @@ class FlowValDataset(Dataset):
             ]
         )
         # self.T_transform = T.FiveCrop(256)
-    
+
     def _init_ffiw(self):
         pass
 
     def _init_cdf(self, video_list_txt="data/Celeb-DF-v2/List_of_testing_videos.txt"):
-        
+
         folder_list = []
         label_list = []
         with open(video_list_txt) as f:
@@ -131,13 +133,15 @@ class FlowValDataset(Dataset):
                 line = data.split()
                 # print(line)
                 path = line[1].split("/")
-                folder_list += ["data/Celeb-DF-v2/" + path[0] + "/flow/" + Path(path[1]).stem]
+                folder_list += [
+                    "data/Celeb-DF-v2/" + path[0] + "/flow/" + Path(path[1]).stem
+                ]
                 label_list += [1 - int(line[0])]
         return folder_list, label_list
-    
+
     def __len__(self):
         return len(self.flow_list)
-    
+
     def __getitem__(self, index):
         flow_folder_path = self.flow_list[index]
         label = self.label_list[index]
@@ -148,9 +152,11 @@ class FlowValDataset(Dataset):
         if len(flow_files) <= self.num_frames:
             sel_flow_files = flow_files
         else:
-            sel_indices = np.linspace(0, len(flow_files) - 1, self.num_frames, dtype=int)
+            sel_indices = np.linspace(
+                0, len(flow_files) - 1, self.num_frames, dtype=int
+            )
             sel_flow_files = [flow_files[i] for i in sel_indices]
-        
+
         flow_list = []
         for sel_flow_file in sel_flow_files:
             flow = readFlow(sel_flow_file)
