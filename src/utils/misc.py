@@ -195,7 +195,7 @@ class MetricLogger(object):
         tb = pt.PrettyTable(field_names=["Metrics", "Values"])
         for name, meter in self.meters.items():
             tb.add_row([name, str(meter)])
-        return tb.get_string()
+        return "\n" + tb.get_string()
 
     def __getattr__(self, attr):
         if attr in self.meters:

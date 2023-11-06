@@ -35,6 +35,7 @@ class FlowFormer(nn.Module):
             self.context_encoder = twins_svt_large(pretrained=self.cfg.pretrain)
         elif cfg.cnet == "basicencoder":
             self.context_encoder = BasicEncoder(output_dim=256, norm_fn="instance")
+            raise NotImplementedError
 
     def forward(self, image1, image2, output=None, flow_init=None):
         # Following https://github.com/princeton-vl/RAFT/

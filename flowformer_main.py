@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from pathlib import Path
 
+import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -33,8 +34,12 @@ def main(cfg, args):
     #     new_state_dict[k.replace("module.", "")] = v
     # model.load_state_dict(new_state_dict)
 
-    model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-    model.fc = nn.Linear(2048, 2, bias=True)
+    # model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    # model.fc = nn.Linear(2048, 2, bias=True)
+    # model = model.cuda()
+
+    model = timm.create_model("twins_svt_large", pretrained=True)
+    model.head = nn.Linear(1024, 2, bias=True)
     model = model.cuda()
 
     dataset = ImagePairDataset(
@@ -74,7 +79,7 @@ def main(cfg, args):
     best_auc_epoch = 0
     for epoch in range(args.num_epoch):
         if epoch % args.eval_freq == 0:
-            auc = val(cdf_val_loader, model, epoch, args)
+            auc = val(cdf_val_loader, model, epoch, args, writer)
             logger.info(f"Val AUC: {auc} at epoch {epoch}")
             if auc > best_auc:
                 best_auc = auc
@@ -82,7 +87,7 @@ def main(cfg, args):
                 save_model_path = Path(args.dir_path, "checkpoints", "best.pth")
                 torch.save(model.state_dict(), save_model_path)
 
-        train(train_loader, model, opt, criterion, epoch, args)
+        train(train_loader, model, opt, criterion, epoch, args, writer)
         lr_scheduler.step()
 
         save_model_path = Path(args.dir_path, "checkpoints", "last.pth")
@@ -104,7 +109,7 @@ def val(val_loader, model, epoch, args, writer=None):
             label = item["label"].cuda()
             image1 = item["first_frame"].cuda()
             # image2 = item["second_frame"].cuda()
-            # pred_flow = model(image1, image2)
+            # out = model(image1, image2)
             out = model(image1)
             out = out.mean(dim=0)
 
