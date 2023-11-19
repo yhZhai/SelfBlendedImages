@@ -129,7 +129,8 @@ class ValImagePairDataset(Dataset):
             [
                 A.SmallestMaxSize(256),
                 A.CenterCrop(256, 256),  # TODO change according to face location
-            ]
+            ],
+            additional_targets={"image1": "image"},
         )
         self.normalize = T.Compose(
             [

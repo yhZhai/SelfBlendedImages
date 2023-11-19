@@ -16,7 +16,7 @@ def get_parser():
 
     # data
     parser.add_argument("--image_size", type=int, default=256)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_worker", type=int, default=8)
     parser.add_argument(
         "--dataset_path",
@@ -34,7 +34,7 @@ def get_parser():
 
     # save
     parser.add_argument("--save_root_path", type=str, default="work_dir")
-    parser.add_argument("--session", type=str, default="twinsbaseline")
+    parser.add_argument("--session", type=str, default="flowformerbaseline")
     parser.add_argument("--num_weight", type=int, default=5)
 
     # misc

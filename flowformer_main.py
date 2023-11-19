@@ -27,20 +27,20 @@ def compute_accuray(pred, true):
 def main(cfg, args):
     writer = setup_env(args)
 
-    # model = build_flowformer(cfg).cuda()
-    # state_dict = torch.load("checkpoints/things.pth", map_location="cpu")
-    # new_state_dict = OrderedDict()
-    # for k, v in state_dict.items():
-    #     new_state_dict[k.replace("module.", "")] = v
-    # model.load_state_dict(new_state_dict)
+    model = build_flowformer(cfg).cuda()
+    state_dict = torch.load("checkpoints/things.pth", map_location="cpu")
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        new_state_dict[k.replace("module.", "")] = v
+    model.load_state_dict(new_state_dict, strict=False)
 
     # model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
     # model.fc = nn.Linear(2048, 2, bias=True)
     # model = model.cuda()
 
-    model = timm.create_model("twins_svt_large", pretrained=True)
-    model.head = nn.Linear(1024, 2, bias=True)
-    model = model.cuda()
+    # model = timm.create_model("twins_svt_large", pretrained=True)
+    # model.head = nn.Linear(1024, 2, bias=True)
+    # model = model.cuda()
 
     dataset = ImagePairDataset(
         "train",
@@ -108,9 +108,9 @@ def val(val_loader, model, epoch, args, writer=None):
         for step, item in metric_logger.log_every(val_loader, header=f"[val {epoch}]"):
             label = item["label"].cuda()
             image1 = item["first_frame"].cuda()
-            # image2 = item["second_frame"].cuda()
-            # out = model(image1, image2)
-            out = model(image1)
+            image2 = item["second_frame"].cuda()
+            out = model(image1, image2)
+            # out = model(image1)
             out = out.mean(dim=0)
 
             labels.append(label.item())
@@ -136,9 +136,9 @@ def train(train_loader, model, opt, criterion, epoch, args, writer=None):
     for step, item in metric_logger.log_every(train_loader, header=f"[train {epoch}]"):
         label = item["label"].cuda()
         image1 = item["first_frame"].cuda()
-        # image2 = item["second_frame"].cuda()
-        # pred_flow = model(image1, image2)
-        out = model(image1)
+        image2 = item["second_frame"].cuda()
+        out = model(image1, image2)
+        # out = model(image1)
         loss = criterion(out, label)
 
         opt.zero_grad()
