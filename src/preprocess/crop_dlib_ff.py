@@ -16,7 +16,6 @@ from imutils import face_utils
 def facecrop(
     org_path, save_path, face_detector, face_predictor, period=1, num_frames=10
 ):
-
     cap_org = cv2.VideoCapture(org_path)
 
     croppedfaces = []
@@ -27,7 +26,6 @@ def facecrop(
     )
     for cnt_frame in range(frame_count_org):
         ret_org, frame_org = cap_org.read()
-        height, width = frame_org.shape[:-1]
         if not ret_org:
             tqdm.write(
                 "Frame read {} Error! : {}".format(
@@ -36,10 +34,21 @@ def facecrop(
             )
             break
 
+        height, width = frame_org.shape[:-1]
+
         if cnt_frame not in frame_idxs:
             continue
 
         frame = cv2.cvtColor(frame_org, cv2.COLOR_BGR2RGB)
+
+        save_path_ = (
+            save_path + "frames/" + os.path.basename(org_path).replace(".mp4", "/")
+        )
+        os.makedirs(save_path_, exist_ok=True)
+        image_path = save_path_ + str(cnt_frame).zfill(3) + ".png"
+        if not os.path.isfile(image_path):
+            cv2.imwrite(image_path, frame_org)
+
 
         faces = face_detector(frame, 1)
         if len(faces) == 0:
@@ -62,21 +71,12 @@ def facecrop(
             (len(size_list),) + landmark.shape
         )
         landmarks = landmarks[np.argsort(np.array(size_list))[::-1]]
-
-        save_path_ = (
-            save_path + "frames/" + os.path.basename(org_path).replace(".mp4", "/")
-        )
-        os.makedirs(save_path_, exist_ok=True)
-        image_path = save_path_ + str(cnt_frame).zfill(3) + ".png"
         land_path = save_path_ + str(cnt_frame).zfill(3)
-
         land_path = land_path.replace("/frames", "/landmarks")
 
         os.makedirs(os.path.dirname(land_path), exist_ok=True)
         np.save(land_path, landmarks)
 
-        if not os.path.isfile(image_path):
-            cv2.imwrite(image_path, frame_org)
 
     cap_org.release()
     return
@@ -101,6 +101,13 @@ if __name__ == "__main__":
             "YouTube-real",
             "DFDC",
             "DFDCP",
+            "e4-dagan",
+            "e4-fomm",
+            "e4-lia",
+            "e4-maxine",
+            "e4-pristine",
+            "e4-styleheat",
+            "e4-tps",
         ],
     )
     parser.add_argument("-c", dest="comp", choices=["raw", "c23", "c40"], default="raw")
@@ -129,6 +136,8 @@ if __name__ == "__main__":
         dataset_path = "data/Celeb-DF-v2/{}/".format(args.dataset)
     elif args.dataset in ["DFDC"]:
         dataset_path = "data/{}/".format(args.dataset)
+    elif "e4" in args.dataset:
+        dataset_path = "data/eval4/{}/".format(args.dataset.split("-")[1].upper())
     else:
         raise NotImplementedError
 
@@ -139,7 +148,7 @@ if __name__ == "__main__":
     movies_path = dataset_path + "videos/"
 
     movies_path_list = sorted(glob(movies_path + "*.mp4"))
-    print("{} : videos are exist in {}".format(len(movies_path_list), args.dataset))
+    print("{} videos are exist in {}".format(len(movies_path_list), movies_path))
 
     n_sample = len(movies_path_list)
 

@@ -85,7 +85,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-w", dest="weight_name", type=str)
     parser.add_argument("-d", dest="dataset", type=str)
-    parser.add_argument("-n", dest="n_frames", default=32, type=int)
+    parser.add_argument("-n", dest="n_frames", default=8, type=int)
     args = parser.parse_args()
 
     main(args)

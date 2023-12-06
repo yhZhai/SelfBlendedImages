@@ -17,7 +17,8 @@ import numpy as np
 from PIL import Image
 import torch
 from torch.utils.data import Dataset, IterableDataset
-from torchvision import datasets, transforms, utils
+from torchvision import datasets, utils
+from torchvision import transforms as T
 import albumentations as alb
 
 
@@ -87,6 +88,14 @@ class SBI_Dataset(Dataset):
 
         self.transforms = self.get_transforms()
         self.source_transforms = self.get_source_transforms()
+        # self.normalize_transform = T.Compose(
+        #     [
+        #         T.ToTensor(),
+        #         T.Normalize(
+        #             mean=[0.485, 0.456, 0.406],
+        #             std=[0.229, 0.224, 0.225]),
+        #     ]
+        # )
 
     def __len__(self):
         return len(self.image_list)

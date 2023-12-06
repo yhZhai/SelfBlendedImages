@@ -185,3 +185,8 @@ face.png
 src/weights/
 src/preprocess/shape_predictor_81_face_landmarks.dat
 work_dir/
+data/eval4/
+data/Deeperforensics/
+data/FFIW/
+tmp/
+checkpoints/
